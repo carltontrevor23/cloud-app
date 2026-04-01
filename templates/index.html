@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}TaskFlow | To-Do List{% endblock %}
+{% block content %}
+<main class="grid">
+    <section class="panel panel-form">
+        <div class="section-heading">
+            <h2>Add a task</h2>
+            <p>Capture what matters, then keep moving.</p>
+        </div>
+        <form action="{{ url_for('create_task') }}" method="post" class="task-form">
+            <label>
+                Title
+                <input type="text" name="title" placeholder="Finish the weekly report" required>
+            </label>
+            <label>
+                Description
+                <textarea name="description" rows="4" placeholder="Add a few extra details if you want."></textarea>
+            </label>
+            <div class="inline-fields">
+                <label>
+                    Due date
+                    <input type="date" name="due_date" min="{{ today }}">
+                </label>
+                <label>
+                    Priority
+                    <select name="priority">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary">Add task</button>
+        </form>
+    </section>
+
+    <section class="panel panel-main">
+        <div class="toolbar">
+            <div class="section-heading">
+                <h2>Your tasks</h2>
+                <p>{{ stats.open or 0 }} open, {{ stats.completed or 0 }} completed, {{ stats.total or 0 }} total</p>
+            </div>
+            <form method="get" class="filters">
+                <input type="search" name="search" value="{{ search }}" placeholder="Search tasks">
+                <select name="status">
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+                    <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
+                    <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+                </select>
+                <select name="priority">
+                    <option value="all" {% if priority == 'all' %}selected{% endif %}>All priorities</option>
+                    <option value="High" {% if priority == 'High' %}selected{% endif %}>High</option>
+                    <option value="Medium" {% if priority == 'Medium' %}selected{% endif %}>Medium</option>
+                    <option value="Low" {% if priority == 'Low' %}selected{% endif %}>Low</option>
+                </select>
+                <button type="submit" class="btn btn-secondary">Apply</button>
+            </form>
+        </div>
+
+        {% if tasks %}
+            <div class="task-list">
+                {% for task in tasks %}
+                    <article class="task-card {% if task['is_complete'] %}is-complete{% endif %}">
+                        <div class="task-main">
+                            <div class="task-topline">
+                                <span class="badge badge-{{ task['priority']|lower }}">{{ task['priority'] }}</span>
+                                {% if task['due_date'] %}
+                                    <span class="task-date">Due {{ task['due_date'] }}</span>
+                                {% endif %}
+                            </div>
+                            <h3>{{ task['title'] }}</h3>
+                            {% if task['description'] %}
+                                <p>{{ task['description'] }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="task-actions">
+                            <form action="{{ url_for('toggle_task', task_id=task['id']) }}" method="post">
+                                <button type="submit" class="btn btn-toggle">
+                                    {% if task['is_complete'] %}Mark open{% else %}Complete{% endif %}
+                                </button>
+                            </form>
+                            <a href="{{ url_for('edit_task', task_id=task['id']) }}" class="btn btn-secondary">Edit</a>
+                            <form action="{{ url_for('delete_task', task_id=task['id']) }}" method="post" onsubmit="return confirm('Delete this task?');">
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No tasks found</h3>
+                <p>Try adding a new task or adjusting your filters.</p>
+            </div>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}TaskFlow | Edit Task{% endblock %}
+{% block content %}
+<section class="panel panel-form panel-centered">
+    <div class="section-heading">
+        <h2>Edit task</h2>
+        <p>Update the details and keep everything current.</p>
+    </div>
+    <form action="{{ url_for('edit_task', task_id=task['id']) }}" method="post" class="task-form">
+        <label>
+            Title
+            <input type="text" name="title" value="{{ task['title'] }}" required>
+        </label>
+        <label>
+            Description
+            <textarea name="description" rows="4">{{ task['description'] or '' }}</textarea>
+        </label>
+        <div class="inline-fields">
+            <label>
+                Due date
+                <input type="date" name="due_date" value="{{ task['due_date'] or '' }}">
+            </label>
+            <label>
+                Priority
+                <select name="priority">
+                    {% for item in ['Low', 'Medium', 'High'] %}
+                        <option value="{{ item }}" {% if task['priority'] == item %}selected{% endif %}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+        <div class="edit-actions">
+            <button type="submit" class="btn btn-primary">Save changes</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
