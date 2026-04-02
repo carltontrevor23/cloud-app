@@ -5,11 +5,11 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, flash, g, redirect, render_template, request, url_for
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, url_for
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DATABASE = BASE_DIR / "todo.db"
+DATABASE = Path(os.environ.get("DATABASE_PATH", BASE_DIR / "todo.db"))
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
@@ -17,7 +17,8 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
-        g.db = sqlite3.connect(DATABASE)
+        DATABASE.parent.mkdir(parents=True, exist_ok=True)
+        g.db = sqlite3.connect(DATABASE, timeout=10)
         g.db.row_factory = sqlite3.Row
     return g.db
 
@@ -30,7 +31,8 @@ def close_db(_: object | None) -> None:
 
 
 def init_db() -> None:
-    db = sqlite3.connect(DATABASE)
+    DATABASE.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(DATABASE, timeout=10)
     db.execute(
         """
         CREATE TABLE IF NOT EXISTS tasks (
@@ -50,6 +52,11 @@ def init_db() -> None:
 
 def fetch_task(task_id: int) -> sqlite3.Row | None:
     return get_db().execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route("/")
@@ -200,6 +207,12 @@ def delete_task(task_id: int):
     get_db().commit()
     flash("Task deleted.", "success")
     return redirect(url_for("index"))
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error: Exception):
+    app.logger.exception("Unhandled application error: %s", error)
+    return render_template("error.html"), 500
 
 init_db()
 
