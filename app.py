@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -11,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent
 DATABASE = BASE_DIR / "todo.db"
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "dev-secret-key"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 
 def get_db() -> sqlite3.Connection:
@@ -203,4 +204,6 @@ def delete_task(task_id: int):
 init_db()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
+    app.run(host="0.0.0.0", port=port, debug=debug)
