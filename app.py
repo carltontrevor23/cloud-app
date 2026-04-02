@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -13,6 +14,7 @@ DATABASE = Path(os.environ.get("DATABASE_PATH", BASE_DIR / "todo.db"))
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 
 def get_db() -> sqlite3.Connection:
@@ -52,6 +54,11 @@ def init_db() -> None:
 
 def fetch_task(task_id: int) -> sqlite3.Row | None:
     return get_db().execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+
+
+@app.before_request
+def log_request() -> None:
+    app.logger.info("Request received: %s %s", request.method, request.path)
 
 
 @app.route("/health")
