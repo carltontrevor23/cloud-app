@@ -225,8 +225,10 @@ def handle_unexpected_error(error: Exception):
     app.logger.exception("Unhandled application error: %s", error)
     return render_template("error.html"), 500
 
-init_db()
+with app.app_context():
+    init_db()
 
 if __name__ == "__main__":
+    import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
