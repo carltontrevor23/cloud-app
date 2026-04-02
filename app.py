@@ -4,6 +4,8 @@ import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import psycopg2
+import psycopg2.extras
 
 from flask import Flask, flash, g, jsonify, redirect, render_template, request, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -14,16 +16,19 @@ DATABASE = Path(os.environ.get("DATABASE_PATH", BASE_DIR / "todo.db"))
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 
-def get_db() -> sqlite3.Connection:
+def get_db():
     if "db" not in g:
-        DATABASE.parent.mkdir(parents=True, exist_ok=True)
-        g.db = sqlite3.connect(DATABASE, timeout=10)
-        g.db.row_factory = sqlite3.Row
+        g.db = psycopg2.connect(
+            os.getenv("DATABASE_URL"),
+            cursor_factory=psycopg2.extras.DictCursor
+        )
     return g.db
-
 
 @app.teardown_appcontext
 def close_db(_: object | None) -> None:
@@ -32,24 +37,23 @@ def close_db(_: object | None) -> None:
         db.close()
 
 
-def init_db() -> None:
-    DATABASE.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(DATABASE, timeout=10)
-    db.execute(
-        """
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            description TEXT,
-            due_date TEXT,
-            priority TEXT NOT NULL DEFAULT 'Medium',
-            is_complete INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL
-        )
-        """
+def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        due_date TEXT,
+        priority TEXT DEFAULT 'Medium',
+        is_complete INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL
     )
-    db.commit()
-    db.close()
+    """)
+
+    conn.commit()
 
 
 def fetch_task(task_id: int) -> sqlite3.Row | None:
@@ -225,5 +229,4 @@ init_db()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host="0.0.0.0", port=port)
