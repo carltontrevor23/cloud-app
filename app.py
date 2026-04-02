@@ -200,7 +200,7 @@ def delete_task(task_id: int):
     flash("Task deleted.", "success")
     return redirect(url_for("index"))
 
+init_db()
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
